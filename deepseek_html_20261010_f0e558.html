@@ -1,0 +1,1805 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>吃饭睡觉打秀秀 · 横版剧情</title>
+<style>
+  * {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    user-select: none;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  html, body {
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    background: #0b0704;
+    font-family: 'Segoe UI', '华文楷体', 'KaiTi', 'Microsoft YaHei', sans-serif;
+  }
+
+  .game-fullscreen {
+    position: relative;
+    width: 100vw;
+    height: 100vh;
+    overflow: hidden;
+    background: #1a0f0a;
+  }
+
+  /* ================= 背景 ================= */
+  .bg-image {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    opacity: .92;
+    filter: brightness(.8) saturate(.95);
+    transition: opacity .45s ease;
+    pointer-events: none;
+    z-index: 1;
+  }
+
+  .game-fullscreen::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: radial-gradient(ellipse at 50% 42%, rgba(0,0,0,0) 32%, rgba(0,0,0,.6) 100%);
+    pointer-events: none;
+    z-index: 2;
+  }
+
+  /* ================= 怒气 HUD ================= */
+  .rage-hud {
+    position: absolute;
+    top: 20px;
+    left: 24px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 26px 8px 18px;
+    border-radius: 50px;
+    background: linear-gradient(135deg, rgba(30,15,6,.92), rgba(50,25,10,.82));
+    border: 2px solid rgba(201,155,114,.8);
+    box-shadow: 0 6px 24px rgba(0,0,0,.8), inset 0 1px 0 rgba(255,215,160,.2);
+    backdrop-filter: blur(10px);
+    z-index: 30;
+  }
+
+  .rage-icon {
+    font-size: 22px;
+    filter: drop-shadow(0 0 8px #ff5a1f);
+    animation: ragePulse 1.4s ease-in-out infinite;
+  }
+
+  @keyframes ragePulse {
+    0%, 100% { transform: scale(1); opacity: .8; }
+    50% { transform: scale(1.18); opacity: 1; }
+  }
+
+  .rage-label {
+    color: #f5d5b4;
+    font-weight: 900;
+    font-size: 20px;
+    letter-spacing: 4px;
+    text-shadow: 2px 2px 0 #5a1e1e;
+  }
+
+  .rage-number {
+    color: #ffb86b;
+    font-size: 34px;
+    font-weight: 900;
+    text-shadow: 0 0 18px #ff4d00, 2px 2px 0 #421c0a;
+    min-width: 74px;
+    text-align: center;
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* ================= 年糕徽章 ================= */
+  .niangao-badge {
+    position: absolute;
+    top: 94px;
+    left: 24px;
+    padding: 10px 26px;
+    border-radius: 50px;
+    background: linear-gradient(135deg, #fde4b9, #f7c37e);
+    color: #5b2e14;
+    font-size: 20px;
+    font-weight: 900;
+    letter-spacing: 5px;
+    border: 3px solid #ffb347;
+    box-shadow: 0 0 45px #ffaa33, 0 0 18px rgba(255,255,255,.8);
+    z-index: 80;
+    display: none;
+    white-space: nowrap;
+    animation: glowNiangao 1.8s infinite alternate;
+  }
+
+  @keyframes glowNiangao {
+    from { box-shadow: 0 0 22px #ffbb33, 0 0 8px #fff; }
+    to   { box-shadow: 0 0 55px #ff8800, 0 0 26px #ffdd99; }
+  }
+
+  /* ================= 秀秀立绘 ================= */
+  .xiuxiu-sprite {
+    position: absolute;
+    left: 50%;
+    top: 46%;
+    transform: translate(-50%, -50%);
+    height: 66vh;
+    max-height: 560px;
+    width: auto;
+    object-fit: contain;
+    filter: drop-shadow(0 20px 18px rgba(0, 0, 0, .8));
+    z-index: 10;
+    pointer-events: none;
+    transition: height .2s ease, filter .15s;
+  }
+
+  .xiuxiu-sprite.hit-shake {
+    animation: hitShake .3s ease-in-out;
+  }
+
+  @keyframes hitShake {
+    0%   { transform: translate(-50%, -50%) rotate(0deg); }
+    15%  { transform: translate(-44%, -46%) rotate(6deg) scale(1.02); }
+    30%  { transform: translate(-56%, -54%) rotate(-6deg) scale(.98); }
+    45%  { transform: translate(-46%, -47%) rotate(4deg) scale(1.01); }
+    60%  { transform: translate(-55%, -53%) rotate(-4deg) scale(.99); }
+    80%  { transform: translate(-48%, -49%) rotate(2deg) scale(1); }
+    100% { transform: translate(-50%, -50%) rotate(0deg) scale(1); }
+  }
+
+  .xiuxiu-sprite.hit-flash {
+    filter: drop-shadow(0 0 42px #ff4040) brightness(1.55) saturate(1.3);
+  }
+
+  /* ================= 飞出的攻击图标 ================= */
+  .fly-attack {
+    position: fixed;
+    z-index: 500;
+    pointer-events: none;
+    transform-origin: center;
+    will-change: transform, opacity, left, top;
+    filter: drop-shadow(0 0 16px rgba(255,140,60,.9)) drop-shadow(0 0 6px rgba(0,0,0,.8));
+  }
+
+  /* ================= 击中特效 ================= */
+  .impact-effect {
+    position: fixed;
+    z-index: 490;
+    pointer-events: none;
+    font-size: 64px;
+    filter: drop-shadow(0 0 14px rgba(255,180,80,.95)) drop-shadow(0 0 6px rgba(0,0,0,.7));
+    transform-origin: center;
+    will-change: transform, opacity;
+    line-height: 1;
+  }
+
+  .impact-ring {
+    position: fixed;
+    z-index: 485;
+    pointer-events: none;
+    width: 60px;
+    height: 60px;
+    margin-left: -30px;
+    margin-top: -30px;
+    border-radius: 50%;
+    border: 4px solid rgba(255, 200, 90, .95);
+    box-shadow: 0 0 24px rgba(255,140,40,.8);
+    transform-origin: center;
+    will-change: transform, opacity;
+  }
+
+  /* ================= 场景提示 ================= */
+  .scene-toast {
+    position: absolute;
+    top: 104px;
+    left: 50%;
+    transform: translateX(-50%) translateY(-12px);
+    background: linear-gradient(135deg, rgba(32,16,6,.96), rgba(62,32,13,.92));
+    color: #ffd8a8;
+    padding: 12px 38px;
+    border-radius: 40px;
+    font-size: 19px;
+    font-weight: bold;
+    letter-spacing: 3px;
+    border: 2px solid #ffb86b;
+    box-shadow: 0 0 42px rgba(255,140,66,.6), inset 0 0 20px rgba(255,180,100,.15);
+    z-index: 100;
+    opacity: 0;
+    transition: opacity .45s ease, transform .45s ease;
+    pointer-events: none;
+    white-space: nowrap;
+  }
+
+  .scene-toast.show {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+
+  /* ================= 进入下个场景按钮 ================= */
+  .next-scene-btn {
+    position: absolute;
+    top: 94px;
+    right: 24px;
+    padding: 12px 30px;
+    border-radius: 50px;
+    border: 3px solid #f7d9b4;
+    background: linear-gradient(145deg, #e0a76e, #c08852);
+    color: #2e1b0e;
+    font-size: 18px;
+    font-weight: 900;
+    font-family: inherit;
+    letter-spacing: 3px;
+    text-shadow: 1px 1px 0 #ffddb0;
+    box-shadow: 0 7px 0 #5e3c24, 0 12px 22px rgba(0,0,0,.9);
+    cursor: pointer;
+    transition: all .1s ease;
+    z-index: 45;
+    display: none;
+    white-space: nowrap;
+    animation: btnIn .35s cubic-bezier(.2,1.4,.5,1);
+  }
+
+  @keyframes btnIn {
+    from { opacity: 0; transform: translateY(-14px) scale(.9); }
+    to   { opacity: 1; transform: translateY(0) scale(1); }
+  }
+
+  .next-scene-btn.show { display: block; }
+
+  .next-scene-btn:active {
+    transform: translateY(5px);
+    box-shadow: 0 2px 0 #5e3c24, 0 6px 12px rgba(0,0,0,.9);
+  }
+
+  /* ================= 对话框 ================= */
+  .dialogue-box {
+    position: absolute;
+    bottom: 112px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 92%;
+    max-width: 1300px;
+    min-height: 150px;
+    background: linear-gradient(135deg, rgba(24,15,9,.96), rgba(34,21,13,.93));
+    backdrop-filter: blur(10px);
+    border-radius: 26px 26px 26px 8px;
+    border: 3px solid rgba(165,126,97,.9);
+    box-shadow: 0 14px 38px rgba(0,0,0,.9), inset 0 0 38px rgba(45,27,14,.8), inset 0 1px 0 rgba(255,220,180,.1);
+    display: flex;
+    align-items: center;
+    padding: 16px 24px 16px 16px;
+    gap: 20px;
+    z-index: 50;
+  }
+
+  .portrait-frame {
+    width: 118px;
+    height: 118px;
+    border-radius: 20px 20px 20px 4px;
+    border: 4px solid #c99b72;
+    overflow: hidden;
+    flex-shrink: 0;
+    box-shadow: 6px 6px 0 #2a1a0e, inset 0 0 15px rgba(0,0,0,.5);
+    background: #2d1e16;
+  }
+
+  .portrait-frame img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+  }
+
+  .dialogue-content {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    min-width: 0;
+  }
+
+  .speaker-name {
+    font-size: 22px;
+    font-weight: 900;
+    color: #ffcf9c;
+    text-shadow: 3px 3px 0 #3f1e0e, 0 0 15px rgba(255,150,60,.3);
+    letter-spacing: 4px;
+    margin-bottom: 6px;
+    border-left: 7px solid #ff8c42;
+    padding-left: 14px;
+  }
+
+  .dialogue-text {
+    font-size: 19px;
+    line-height: 1.55;
+    color: #f2e3d5;
+    text-shadow: 2px 2px 0 #1f0e06;
+    background: linear-gradient(135deg, #2d1e15, #251811);
+    padding: 14px 22px;
+    border-radius: 18px 18px 18px 6px;
+    border: 2px solid #8f6e55;
+    box-shadow: inset 0 0 20px rgba(0,0,0,.7), inset 0 1px 0 rgba(255,200,150,.08);
+    min-height: 76px;
+    word-break: break-word;
+    font-weight: 500;
+  }
+
+  .continue-hint {
+    position: absolute;
+    right: 26px;
+    bottom: 14px;
+    color: #d4b594;
+    font-size: 15px;
+    font-weight: bold;
+    letter-spacing: 1px;
+    animation: pulse 1.2s infinite;
+    z-index: 60;
+    pointer-events: none;
+  }
+
+  @keyframes pulse {
+    0%, 100% { opacity: .35; }
+    50% { opacity: 1; }
+  }
+
+  /* ================= 底部操作栏 ================= */
+  .action-bar {
+    position: absolute;
+    bottom: 16px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 96%;
+    max-width: 1160px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 34px;
+    padding: 8px 22px;
+    background: linear-gradient(135deg, rgba(18,11,7,.92), rgba(28,17,10,.88));
+    backdrop-filter: blur(12px);
+    border-radius: 60px;
+    border: 2px solid rgba(122,91,69,.9);
+    box-shadow: 0 10px 30px rgba(0,0,0,.9), inset 0 1px 0 rgba(255,200,150,.1);
+    z-index: 60;
+  }
+
+  .action-btn {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    transition: transform .15s ease, opacity .25s ease, filter .25s ease;
+    opacity: .22;
+    pointer-events: none;
+    padding: 4px 10px;
+    border-radius: 18px;
+    filter: grayscale(.85);
+    position: relative;
+  }
+
+  .action-btn.unlocked {
+    opacity: 1;
+    pointer-events: auto;
+    filter: grayscale(0);
+  }
+
+  .action-btn.unlocked:hover {
+    transform: translateY(-3px);
+  }
+
+  .action-btn.unlocked:active {
+    transform: scale(.88);
+  }
+
+  .action-btn img {
+    width: 50px;
+    height: 50px;
+    object-fit: contain;
+    filter: drop-shadow(0 6px 6px rgba(0,0,0,.9));
+  }
+
+  .action-btn span {
+    font-size: 14px;
+    font-weight: bold;
+    color: #ffe6d0;
+    text-shadow: 2px 2px 0 #2e1a0e;
+    letter-spacing: 2px;
+    white-space: nowrap;
+  }
+
+  .action-btn.unlocked:hover span {
+    color: #ffb347;
+  }
+
+  .action-btn::after {
+    content: '🔒';
+    position: absolute;
+    top: 0;
+    right: 4px;
+    font-size: 14px;
+    opacity: 0;
+    transition: opacity .2s ease;
+  }
+
+  .action-btn:not(.unlocked)::after {
+    opacity: .55;
+  }
+
+  /* ================= 场景切换面板（右上角） ================= */
+  .scene-panel {
+    position: absolute;
+    top: 20px;
+    right: 24px;
+    z-index: 200;
+    display: none;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 8px;
+  }
+
+  .scene-panel.show {
+    display: flex;
+  }
+
+  .scene-panel-toggle {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 11px 22px;
+    border-radius: 40px;
+    border: 2px solid rgba(178,139,110,.9);
+    background: linear-gradient(135deg, rgba(42,24,11,.96), rgba(62,36,18,.92));
+    color: #ffd8a8;
+    font-family: inherit;
+    font-size: 15px;
+    font-weight: 900;
+    letter-spacing: 3px;
+    cursor: pointer;
+    box-shadow: 0 5px 18px rgba(0,0,0,.85), inset 0 1px 0 rgba(255,200,150,.18);
+    backdrop-filter: blur(10px);
+    transition: all .16s ease;
+    white-space: nowrap;
+  }
+
+  .scene-panel-toggle:hover {
+    border-color: #ffb86b;
+    color: #fff0dc;
+  }
+
+  .scene-panel-toggle:active {
+    transform: scale(.96);
+  }
+
+  .scene-panel-toggle .arrow {
+    display: inline-block;
+    font-size: 10px;
+    transition: transform .25s ease;
+  }
+
+  .scene-panel.expanded .scene-panel-toggle .arrow {
+    transform: rotate(180deg);
+  }
+
+  .scene-panel-body {
+    display: none;
+    flex-direction: column;
+    gap: 6px;
+    padding: 10px;
+    border-radius: 20px;
+    background: linear-gradient(135deg, rgba(26,15,8,.97), rgba(38,21,12,.95));
+    border: 2px solid rgba(178,139,110,.8);
+    box-shadow: 0 14px 36px rgba(0,0,0,.9), inset 0 1px 0 rgba(255,200,150,.12);
+    backdrop-filter: blur(14px);
+    min-width: 176px;
+  }
+
+  .scene-panel.expanded .scene-panel-body {
+    display: flex;
+    animation: panelIn .22s ease;
+  }
+
+  @keyframes panelIn {
+    from { opacity: 0; transform: translateY(-10px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  .scene-option-btn {
+    padding: 10px 18px;
+    border-radius: 40px;
+    border: 2px solid rgba(201,155,114,.6);
+    background: linear-gradient(135deg, #5b4130, #4a3426);
+    color: #f5e3d2;
+    font-family: inherit;
+    font-size: 15px;
+    font-weight: bold;
+    letter-spacing: 2px;
+    cursor: pointer;
+    transition: all .15s ease;
+    box-shadow: 0 3px 0 #2f1f14, 0 5px 10px rgba(0,0,0,.8);
+    white-space: nowrap;
+    text-align: center;
+  }
+
+  .scene-option-btn:active {
+    transform: translateY(3px);
+    box-shadow: 0 0 0 #2f1f14, 0 2px 5px rgba(0,0,0,.8);
+  }
+
+  .scene-option-btn.unlocked {
+    background: linear-gradient(135deg, #7a5b3e, #664a30);
+    border-color: #ffb86b;
+    color: #fff0dc;
+  }
+
+  .scene-option-btn.active-scene {
+    background: linear-gradient(135deg, #d49659, #b57d43);
+    border-color: #ffe0a0;
+    color: #2e1b0e;
+    box-shadow: 0 0 22px rgba(255,180,80,.55), 0 3px 0 #5e3c24, 0 5px 10px rgba(0,0,0,.8);
+  }
+
+  .scene-option-btn:disabled {
+    opacity: .32;
+    cursor: not-allowed;
+    box-shadow: none;
+    transform: none;
+    pointer-events: none;
+    filter: grayscale(.6);
+  }
+
+  /* ================= 立绘切换面板 ================= */
+  .sprite-panel {
+    position: absolute;
+    bottom: 300px;
+    right: 24px;
+    z-index: 200;
+    display: none;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 8px;
+  }
+
+  .sprite-panel.show {
+    display: flex;
+  }
+
+  .sprite-panel-toggle {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 11px 22px;
+    border-radius: 40px;
+    border: 2px solid rgba(178,139,110,.9);
+    background: linear-gradient(135deg, rgba(42,24,11,.96), rgba(62,36,18,.92));
+    color: #ffd8a8;
+    font-family: inherit;
+    font-size: 15px;
+    font-weight: 900;
+    letter-spacing: 3px;
+    cursor: pointer;
+    box-shadow: 0 5px 18px rgba(0,0,0,.85), inset 0 1px 0 rgba(255,200,150,.18);
+    backdrop-filter: blur(10px);
+    transition: all .16s ease;
+    white-space: nowrap;
+  }
+
+  .sprite-panel-toggle:hover {
+    border-color: #ffb86b;
+    color: #fff0dc;
+  }
+
+  .sprite-panel-toggle:active {
+    transform: scale(.96);
+  }
+
+  .sprite-panel-toggle .arrow {
+    display: inline-block;
+    font-size: 10px;
+    transition: transform .25s ease;
+  }
+
+  .sprite-panel.expanded .sprite-panel-toggle .arrow {
+    transform: rotate(180deg);
+  }
+
+  .sprite-panel-body {
+    display: none;
+    flex-direction: column;
+    gap: 6px;
+    padding: 10px;
+    border-radius: 20px;
+    background: linear-gradient(135deg, rgba(26,15,8,.97), rgba(38,21,12,.95));
+    border: 2px solid rgba(178,139,110,.8);
+    box-shadow: 0 14px 36px rgba(0,0,0,.9), inset 0 1px 0 rgba(255,200,150,.12);
+    backdrop-filter: blur(14px);
+    min-width: 150px;
+  }
+
+  .sprite-panel.expanded .sprite-panel-body {
+    display: flex;
+    animation: panelIn .22s ease;
+  }
+
+  .sprite-btn {
+    padding: 10px 18px;
+    border-radius: 40px;
+    border: 2px solid rgba(201,155,114,.6);
+    background: linear-gradient(135deg, #4a3728, #3d2c1f);
+    color: #ffd8a8;
+    font-family: inherit;
+    font-size: 14px;
+    font-weight: bold;
+    letter-spacing: 1px;
+    cursor: pointer;
+    transition: all .15s ease;
+    box-shadow: 0 3px 0 #2f1f14;
+    white-space: nowrap;
+    text-align: center;
+  }
+
+  .sprite-btn:active {
+    transform: scale(.94);
+  }
+
+  .sprite-btn.active {
+    background: linear-gradient(135deg, #d49659, #b57d43);
+    border-color: #ffe0a0;
+    color: #2e1b0e;
+    box-shadow: 0 0 18px rgba(255,180,80,.5), 0 3px 0 #5e3c24;
+  }
+
+  /* ================= 通关提示 ================= */
+  .all-clear-toast {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%) scale(.88);
+    padding: 22px 54px;
+    border-radius: 60px;
+    background: linear-gradient(135deg, rgba(32,16,6,.97), rgba(64,32,13,.95));
+    border: 3px solid #ffb86b;
+    color: #ffd8a8;
+    font-size: 25px;
+    font-weight: 900;
+    letter-spacing: 6px;
+    box-shadow: 0 0 90px rgba(255,170,51,.75), inset 0 0 30px rgba(255,180,100,.15);
+    z-index: 300;
+    opacity: 0;
+    transition: opacity .5s ease, transform .5s cubic-bezier(.2,1.3,.4,1);
+    pointer-events: none;
+    white-space: nowrap;
+  }
+
+  .all-clear-toast.show {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
+  }
+
+  /* ================= 响应式 ================= */
+  @media (max-width: 720px) {
+    .rage-hud { padding: 6px 18px 6px 14px; top: 14px; left: 14px; }
+    .rage-label { font-size: 16px; letter-spacing: 2px; }
+    .rage-number { font-size: 26px; min-width: 58px; }
+    .rage-icon { font-size: 17px; }
+    .niangao-badge { font-size: 15px; padding: 8px 18px; letter-spacing: 3px; top: 78px; left: 14px; }
+    .scene-panel { top: 14px; right: 14px; }
+    .scene-panel-toggle { padding: 9px 16px; font-size: 13px; letter-spacing: 2px; }
+    .sprite-panel { bottom: 270px; right: 14px; }
+    .sprite-panel-toggle { padding: 9px 16px; font-size: 13px; letter-spacing: 2px; }
+    .next-scene-btn { top: 76px; right: 14px; padding: 10px 20px; font-size: 15px; letter-spacing: 2px; }
+    .dialogue-box { bottom: 104px; padding: 12px 16px 12px 12px; gap: 12px; min-height: 128px; }
+    .portrait-frame { width: 84px; height: 84px; border-width: 3px; }
+    .speaker-name { font-size: 17px; letter-spacing: 2px; }
+    .dialogue-text { font-size: 15px; padding: 10px 14px; min-height: 62px; }
+    .continue-hint { font-size: 12px; right: 14px; bottom: 8px; }
+    .action-bar { gap: 12px; padding: 6px 12px; bottom: 10px; }
+    .action-btn img { width: 38px; height: 38px; }
+    .action-btn span { font-size: 11px; letter-spacing: 1px; }
+    .scene-toast { font-size: 15px; padding: 10px 22px; letter-spacing: 2px; top: 88px; }
+    .all-clear-toast { font-size: 17px; padding: 16px 30px; letter-spacing: 3px; }
+  }
+</style>
+</head>
+<body>
+<div class="game-fullscreen">
+  <img class="bg-image" id="bgImage"
+       src="https://origin.picgo.net/2026/10/10/1791610925394785f5c4dea5514fb.jpeg" alt="场景">
+
+  <!-- 怒气值 -->
+  <div class="rage-hud">
+    <span class="rage-icon">💢</span>
+    <span class="rage-label">怒气</span>
+    <span class="rage-number" id="rageDisplay">0</span>
+  </div>
+
+  <!-- 年糕徽章 -->
+  <div class="niangao-badge" id="niangaoBadge">🍡 年糕秀秀 🍡</div>
+
+  <!-- 秀秀立绘 -->
+  <img class="xiuxiu-sprite" id="xiuxiuSprite"
+       src="https://origin.picgo.net/2026/10/10/retouch_202610101315246966d487f311ef3cc1.png" alt="秀秀">
+
+  <!-- 场景提示 -->
+  <div class="scene-toast" id="sceneToast">🔓 新场景解锁！</div>
+
+  <!-- 进入下个场景 -->
+  <button class="next-scene-btn" id="nextSceneBtn">➡️ 进入下个场景</button>
+
+  <!-- 场景切换面板（右上角，通关后解锁） -->
+  <div class="scene-panel" id="scenePanel">
+    <button class="scene-panel-toggle" id="scenePanelToggle">
+      <span>🏠 场景切换</span>
+      <span class="arrow">▼</span>
+    </button>
+    <div class="scene-panel-body" id="scenePanelBody">
+      <button class="scene-option-btn" data-scene="0">🏠 客厅</button>
+      <button class="scene-option-btn" data-scene="1">🍜 餐厅</button>
+      <button class="scene-option-btn" data-scene="2">🛏️ 卧室</button>
+      <button class="scene-option-btn" data-scene="3">🚿 卫生间</button>
+    </div>
+  </div>
+
+  <!-- 立绘切换面板（右下角，通关后解锁） -->
+  <div class="sprite-panel" id="spritePanel">
+    <button class="sprite-panel-toggle" id="spritePanelToggle">
+      <span>👗 秀秀立绘</span>
+      <span class="arrow">▼</span>
+    </button>
+    <div class="sprite-panel-body" id="spritePanelBody">
+      <button class="sprite-btn active" data-sprite="init">😐 正常秀</button>
+      <button class="sprite-btn" data-sprite="cry">😢 哭哭秀</button>
+      <button class="sprite-btn" data-sprite="wail">😭 嚎啕秀</button>
+    </div>
+  </div>
+
+  <!-- 通关提示 -->
+  <div class="all-clear-toast" id="allClearToast">🎉 全剧情通关！自由玩耍吧 🎉</div>
+
+  <!-- 对话框 -->
+  <div class="dialogue-box" id="dialogueBox">
+    <div class="portrait-frame" id="portraitFrame">
+      <img src="https://origin.picgo.net/2026/10/10/retouch_2026101014075294e7890ade3c9bfce2.png" alt="邵群">
+    </div>
+    <div class="dialogue-content">
+      <div class="speaker-name" id="speakerName">邵群</div>
+      <div class="dialogue-text" id="dialogueText">……</div>
+    </div>
+    <div class="continue-hint" id="continueHint">👆 点击对话框继续</div>
+  </div>
+
+  <!-- 底部操作栏 -->
+  <div class="action-bar" id="actionBar">
+    <button class="action-btn" id="btnPunch" data-action="punch">
+      <img src="https://origin.picgo.net/2026/10/10/retouch_20261010132958167fe28c41dd866934.png" alt="拳打">
+      <span>👊 一拳打哭</span>
+    </button>
+    <button class="action-btn" id="btnSlap" data-action="slap">
+      <img src="https://origin.picgo.net/2026/10/10/retouch_20261010133011070499e5683796f99e.png" alt="扇巴掌">
+      <span>✋ 五指山压顶</span>
+    </button>
+    <button class="action-btn" id="btnKick" data-action="kick">
+      <img src="https://origin.picgo.net/2026/10/10/retouch_20261010133022992be6a6557d249ab0.png" alt="脚踢">
+      <span>🦶 送你上天</span>
+    </button>
+    <button class="action-btn" id="btnHammer" data-action="hammer">
+      <img src="https://origin.picgo.net/2026/10/10/retouch_20261010133033760b2ef47baf989d4a.png" alt="捶打">
+      <span>🔨 捶成软年糕</span>
+    </button>
+  </div>
+</div>
+
+<script>
+/* =========================================================
+   资源
+   ========================================================= */
+const XIUXIU_SPRITES = {
+  init:   'https://origin.picgo.net/2026/10/10/retouch_202610101315246966d487f311ef3cc1.png',
+  cry:    'https://origin.picgo.net/2026/10/10/retouch_2026101013153993b183a424b08903bd.png',
+  wail:   'https://origin.picgo.net/2026/10/10/retouch_20261010131553717e81383e0e2a9f45.png',
+  niangao:'https://origin.picgo.net/2026/10/10/retouch_20261010133120062337c3cd647d9748.png'
+};
+
+const PORTRAITS = {
+  shaoqun:       'https://origin.picgo.net/2026/10/10/retouch_2026101014075294e7890ade3c9bfce2.png',
+  shuiqiancheng: 'https://origin.picgo.net/2026/10/10/retouch_2026101014082165b6be58cc4e8c04cc.png',
+  xiuxiu:        XIUXIU_SPRITES.init,
+  system:        'https://origin.picgo.net/2026/10/10/retouch_2026101014075294e7890ade3c9bfce2.png'
+};
+
+/* =========================================================
+   场景配置 —— 结合《娘娘腔》人物设定
+   ========================================================= */
+const SCENE_ORDER = ['living', 'dining', 'bedroom', 'bathroom'];
+
+const SCENES = {
+  living: {
+    name: '客厅', icon: '🏠',
+    bg: 'https://origin.picgo.net/2026/10/10/1791610925394785f5c4dea5514fb.jpeg',
+    action: 'punch',
+    actionLabel: '一拳打哭',
+    rageGoal: 25,
+    dialogues: [
+      { speaker: '邵群', portrait: 'shaoqun',
+        text: '李程秀！你又在客厅抠脚！抠完还凑到鼻子跟前闻——你是娘们儿吗？！' },
+      { speaker: '李程秀', portrait: 'xiuxiu',
+        text: '我……人家脚痒嘛……控制不住的呀……而且人家洗过手手啦……' },
+      { speaker: '水千丞', portrait: 'shuiqiancheng',
+        text: '邵群哥哥别气嘛~秀秀也不是故意的呀。不过秀秀，女孩子都不会在客厅抠脚呢，你一个大男人……（掩嘴轻笑）' },
+      { speaker: '邵群', portrait: 'shaoqun',
+        text: '不是故意的？上周在沙发上剪脚指甲，上上周拿茶几搓脚皮！这客厅是给客人的，还是给你泡脚的？！' },
+      { speaker: '水千丞', portrait: 'shuiqiancheng',
+        text: '哎呀秀秀你这样可不行呢~邵群哥哥最讲究卫生的啦。要不……我帮你管教管教他？省得他总这么没规矩~' },
+      { speaker: '李程秀', portrait: 'xiuxiu',
+        text: '我保证我保证……人家以后只在浴室抠……不给你丢脸了嘛……' },
+      { speaker: '邵群', portrait: 'shaoqun',
+        text: '浴室也不行！你……你这副样子！算了，先揍一顿再说！' }
+    ]
+  },
+
+  dining: {
+    name: '餐厅', icon: '🍜',
+    bg: 'https://origin.picgo.net/2026/10/10/17916109105314af77505369e6b28.jpeg',
+    action: 'slap',
+    actionLabel: '五指山压顶',
+    rageGoal: 55,
+    dialogues: [
+      { speaker: '邵群', portrait: 'shaoqun',
+        text: '李程秀！我说过八百遍我不吃香菜不吃蒜！这碗面你是拿香菜当面下的吧？！' },
+      { speaker: '李程秀', portrait: 'xiuxiu',
+        text: '我……人家以为你多吃几回就能习惯了呀……而且蒜能杀菌，对身子好的呢……' },
+      { speaker: '水千丞', portrait: 'shuiqiancheng',
+        text: '邵群哥哥~秀秀也是一片好心呀。不过秀秀，你怎么连邵群哥哥的忌口都记不住呢？这可不像过日子的人呢~' },
+      { speaker: '邵群', portrait: 'shaoqun',
+        text: '好心？上周火锅半碗蒜泥，上上周饺子馅全是香菜！你是想毒死我继承我的钱包吗？！' },
+      { speaker: '水千丞', portrait: 'shuiqiancheng',
+        text: '噗~邵群哥哥你说话好严重哦。不过说真的秀秀，你连他的喜好都记不住，他当然要生气了呀。要不以后你的饭……让我来做？' },
+      { speaker: '李程秀', portrait: 'xiuxiu',
+        text: '对不起嘛……人家下次一定记住……给你重新做一碗好不好呀……' },
+      { speaker: '邵群', portrait: 'shaoqun',
+        text: '记本子？我先把你记到墙上去！' }
+    ]
+  },
+
+  bedroom: {
+    name: '卧室', icon: '🛏️',
+    bg: 'https://origin.picgo.net/2026/10/10/1791610906903705023d04523ca77.jpeg',
+    action: 'kick',
+    actionLabel: '送你上天',
+    rageGoal: 80,
+    dialogues: [
+      { speaker: '邵群', portrait: 'shaoqun',
+        text: '李程秀！你趴在门缝那儿看什么？我跟水千丞说话关你什么事？！' },
+      { speaker: '李程秀', portrait: 'xiuxiu',
+        text: '我……人家切了水果……想问问你们要不要吃的呀……' },
+      { speaker: '水千丞', portrait: 'shuiqiancheng',
+        text: '邵群哥哥~别这么凶嘛，秀秀也是关心我们呀。不过秀秀，偷看别人可不好哦，多没教养呢~' },
+      { speaker: '邵群', portrait: 'shaoqun',
+        text: '关心？上回钻床底，上上回躲衣柜——你当这是捉迷藏呢？！' },
+      { speaker: '水千丞', portrait: 'shuiqiancheng',
+        text: '哎呀，这么一说秀秀你确实过分了呢。邵群哥哥，要不咱们换个房间说话吧？省得有人总爱听墙角~' },
+      { speaker: '李程秀', portrait: 'xiuxiu',
+        text: '人家不是故意的嘛……人家这就走……水果给你们放这儿了……' },
+      { speaker: '邵群', portrait: 'shaoqun',
+        text: '走？今天先踹你一顿再走！' }
+    ]
+  },
+
+  bathroom: {
+    name: '卫生间', icon: '🚿',
+    bg: 'https://origin.picgo.net/2026/10/10/17916109019197f0c6e0ca8565315.jpeg',
+    action: 'hammer',
+    actionLabel: '捶成软年糕',
+    rageGoal: 120,
+    dialogues: [
+      { speaker: '邵群', portrait: 'shaoqun',
+        text: '李程秀——！！马桶圈上是什么？！你拉肚子就不能低头看一眼吗！' },
+      { speaker: '李程秀', portrait: 'xiuxiu',
+        text: '人家……人家肚子疼得厉害嘛……实在来不及了……呜呜……对不起……' },
+      { speaker: '水千丞', portrait: 'shuiqiancheng',
+        text: '邵群哥哥，这卫生间我可不想进来了呢……秀秀你也太不讲究了吧？要不……干脆把他冲下去算了~（掩鼻浅笑）' },
+      { speaker: '邵群', portrait: 'shaoqun',
+        text: '来不及？上个月堵马桶，上上个月尿到外头，上上上个月把毛巾掉坑里！我今天不捶死你我不姓邵！' },
+      { speaker: '水千丞', portrait: 'shuiqiancheng',
+        text: '邵群哥哥~捶的时候小心别溅到身上哦，多脏呀~要不我帮你拿根棍子？（笑得温柔）' },
+      { speaker: '李程秀', portrait: 'xiuxiu',
+        text: '呜呜呜……别打啦……人家……人家都要被你打软了呀……软成一团年糕了……' }
+    ]
+  }
+};
+
+/* =========================================================
+   攻击反馈文案 —— 结合人设
+   ========================================================= */
+const ACTION_FEEDBACK = {
+  punch: [
+    '邵群：吃我一拳！你这张脸皮比城墙还厚！',
+    '邵群：这一拳，是替我那张被你弄脏的沙发报仇！',
+    '邵群：我打！让你手贱！抠抠抠，抠你个头！',
+    '邵群：拳头都嫌你脸脏，打完我得去洗三遍手！',
+    '邵群：一拳把你打成表情包，看你还敢不敢！',
+    '邵群：程秀你这笨蛋，一拳下去你还能站稳吗？'
+  ],
+  slap: [
+    '邵群：啪！这一巴掌是替你死去的妈教育你！',
+    '邵群：脸肿了没？肿了才能长记性！',
+    '邵群：我一巴掌下去，你连东南西北都分不清了吧？',
+    '邵群：这巴掌是替水千丞打的，她说你脏了她的眼！',
+    '邵群：五指山压顶！李程秀你服不服？不服再扇！',
+    '邵群：程秀你再这么娘们儿唧唧的，我一巴掌把你扇回老家！'
+  ],
+  kick: [
+    '邵群：一脚送你回老家！别在这儿丢人现眼！',
+    '邵群：我踹！你当自己是皮球呢？滚远点！',
+    '邵群：这一脚是警告你，卧室不是你能偷看的地方！',
+    '邵群：飞踢！程秀你该减肥了，踹得我脚疼！',
+    '邵群：踹你我都嫌脚脏，回头得换双鞋！',
+    '邵群：程秀你再敢扒门缝，我把你踹出门去！'
+  ],
+  hammer: [
+    '邵群：捶捶捶！把你捶成年糕！软趴趴的才老实！',
+    '邵群：这捶打，是让你记住——年糕就该有年糕的样子！',
+    '邵群：我锤！你比地鼠还难打，但我偏要锤！',
+    '邵群：吃我一记流星锤！锤到你怀疑人生！',
+    '邵群：捶成年糕了吧？现在知道什么叫软糯了？',
+    '邵群：程秀你这软骨头，一锤下去就趴了，真是欠捶！'
+  ]
+};
+
+/* =========================================================
+   音效引擎（单例 AudioContext）
+   ========================================================= */
+function getAudioCtx() {
+  if (!window._audioCtx) {
+    try {
+      window._audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    } catch (e) { return null; }
+  }
+  if (window._audioCtx.state === 'suspended') {
+    window._audioCtx.resume();
+  }
+  return window._audioCtx;
+}
+
+/* ---------- 打击音效 ---------- */
+function playImpactSound(action) {
+  const ctx = getAudioCtx();
+  if (!ctx) return;
+  const now = ctx.currentTime;
+
+  // 1. 低频冲击
+  const thumpOsc = ctx.createOscillator();
+  const thumpGain = ctx.createGain();
+  thumpOsc.type = 'sine';
+  const startFreqMap = { punch: 155, slap: 210, kick: 120, hammer: 180 };
+  const endFreqMap = { punch: 42, slap: 55, kick: 32, hammer: 38 };
+  const durMap = { punch: 0.20, slap: 0.14, kick: 0.26, hammer: 0.24 };
+  const startFreq = startFreqMap[action] || 150;
+  const endFreq = endFreqMap[action] || 40;
+  const thumpDur = durMap[action] || 0.2;
+
+  thumpOsc.frequency.setValueAtTime(startFreq, now);
+  thumpOsc.frequency.exponentialRampToValueAtTime(endFreq, now + thumpDur);
+  thumpGain.gain.setValueAtTime(0.55, now);
+  thumpGain.gain.exponentialRampToValueAtTime(0.001, now + thumpDur);
+  thumpOsc.connect(thumpGain);
+  thumpGain.connect(ctx.destination);
+  thumpOsc.start(now);
+  thumpOsc.stop(now + thumpDur + 0.02);
+
+  // 2. 击打质感
+  const noiseDurMap = { punch: 0.09, slap: 0.055, kick: 0.11, hammer: 0.12 };
+  const noiseDur = noiseDurMap[action] || 0.09;
+  const bufferSize = Math.max(1, Math.floor(ctx.sampleRate * noiseDur));
+  const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+  const data = buffer.getChannelData(0);
+  for (let i = 0; i < bufferSize; i++) {
+    const t = i / bufferSize;
+    data[i] = (Math.random() * 2 - 1) * Math.pow(1 - t, 1.8);
+  }
+  const noise = ctx.createBufferSource();
+  noise.buffer = buffer;
+  const noiseFilter = ctx.createBiquadFilter();
+  noiseFilter.type = 'bandpass';
+  noiseFilter.Q.value = 1.1;
+  const noiseCenterMap = { punch: 1400, slap: 3200, kick: 700, hammer: 1600 };
+  noiseFilter.frequency.setValueAtTime(noiseCenterMap[action] || 1200, now);
+  const noiseGain = ctx.createGain();
+  const noiseAmpMap = { punch: 0.28, slap: 0.4, kick: 0.22, hammer: 0.32 };
+  noiseGain.gain.setValueAtTime(noiseAmpMap[action] || 0.25, now);
+  noiseGain.gain.exponentialRampToValueAtTime(0.001, now + noiseDur);
+  noise.connect(noiseFilter);
+  noiseFilter.connect(noiseGain);
+  noiseGain.connect(ctx.destination);
+  noise.start(now);
+  noise.stop(now + noiseDur + 0.02);
+
+  // 3. 特色音
+  if (action === 'slap') {
+    const crackOsc = ctx.createOscillator();
+    const crackGain = ctx.createGain();
+    crackOsc.type = 'square';
+    crackOsc.frequency.setValueAtTime(2600, now);
+    crackOsc.frequency.exponentialRampToValueAtTime(700, now + 0.05);
+    crackGain.gain.setValueAtTime(0.18, now);
+    crackGain.gain.exponentialRampToValueAtTime(0.001, now + 0.06);
+    crackOsc.connect(crackGain);
+    crackGain.connect(ctx.destination);
+    crackOsc.start(now);
+    crackOsc.stop(now + 0.07);
+
+    const bodyOsc = ctx.createOscillator();
+    const bodyGain = ctx.createGain();
+    bodyOsc.type = 'triangle';
+    bodyOsc.frequency.setValueAtTime(1800, now + 0.005);
+    bodyOsc.frequency.exponentialRampToValueAtTime(900, now + 0.08);
+    bodyGain.gain.setValueAtTime(0.001, now);
+    bodyGain.gain.linearRampToValueAtTime(0.12, now + 0.005);
+    bodyGain.gain.exponentialRampToValueAtTime(0.001, now + 0.09);
+    bodyOsc.connect(bodyGain);
+    bodyGain.connect(ctx.destination);
+    bodyOsc.start(now + 0.005);
+    bodyOsc.stop(now + 0.1);
+  }
+
+  if (action === 'punch' || action === 'kick') {
+    const swooshOsc = ctx.createOscillator();
+    const swooshGain = ctx.createGain();
+    swooshOsc.type = 'sine';
+    swooshOsc.frequency.setValueAtTime(520, now);
+    swooshOsc.frequency.exponentialRampToValueAtTime(90, now + 0.12);
+    swooshGain.gain.setValueAtTime(0.001, now);
+    swooshGain.gain.linearRampToValueAtTime(0.09, now + 0.015);
+    swooshGain.gain.exponentialRampToValueAtTime(0.001, now + 0.13);
+    swooshOsc.connect(swooshGain);
+    swooshGain.connect(ctx.destination);
+    swooshOsc.start(now);
+    swooshOsc.stop(now + 0.14);
+  }
+
+  if (action === 'hammer') {
+    const metalOsc = ctx.createOscillator();
+    const metalGain = ctx.createGain();
+    metalOsc.type = 'triangle';
+    metalOsc.frequency.setValueAtTime(920, now + 0.01);
+    metalOsc.frequency.exponentialRampToValueAtTime(430, now + 0.45);
+    metalGain.gain.setValueAtTime(0.001, now);
+    metalGain.gain.linearRampToValueAtTime(0.13, now + 0.02);
+    metalGain.gain.exponentialRampToValueAtTime(0.001, now + 0.46);
+    metalOsc.connect(metalGain);
+    metalGain.connect(ctx.destination);
+    metalOsc.start(now + 0.01);
+    metalOsc.stop(now + 0.48);
+
+    const metalOsc2 = ctx.createOscillator();
+    const metalGain2 = ctx.createGain();
+    metalOsc2.type = 'sine';
+    metalOsc2.frequency.setValueAtTime(1840, now + 0.01);
+    metalOsc2.frequency.exponentialRampToValueAtTime(860, now + 0.35);
+    metalGain2.gain.setValueAtTime(0.001, now);
+    metalGain2.gain.linearRampToValueAtTime(0.07, now + 0.02);
+    metalGain2.gain.exponentialRampToValueAtTime(0.001, now + 0.36);
+    metalOsc2.connect(metalGain2);
+    metalGain2.connect(ctx.destination);
+    metalOsc2.start(now + 0.01);
+    metalOsc2.stop(now + 0.38);
+  }
+}
+
+/* ---------- 辅助函数：破音噪声 ---------- */
+function playCrack(ctx, startTime, intensity, delay, dur) {
+  const bufSize = Math.max(1, Math.floor(ctx.sampleRate * dur));
+  const buf = ctx.createBuffer(1, bufSize, ctx.sampleRate);
+  const bd = buf.getChannelData(0);
+  for (let i = 0; i < bufSize; i++) {
+    const t = i / bufSize;
+    bd[i] = (Math.random() * 2 - 1) * Math.pow(1 - t, 1.2);
+  }
+  const crack = ctx.createBufferSource();
+  crack.buffer = buf;
+  const crackFilter = ctx.createBiquadFilter();
+  crackFilter.type = 'highpass';
+  crackFilter.frequency.value = 2800;
+  const crackGain = ctx.createGain();
+  crackGain.gain.setValueAtTime(0.07 * intensity, startTime + delay);
+  crackGain.gain.exponentialRampToValueAtTime(0.001, startTime + delay + dur);
+  crack.connect(crackFilter);
+  crackFilter.connect(crackGain);
+  crackGain.connect(ctx.destination);
+  crack.start(startTime + delay);
+}
+
+/* ---------- 辅助函数：气声尾巴 ---------- */
+function playBreath(ctx, startTime, intensity, dur, filterFreq) {
+  const bufSize = Math.max(1, Math.floor(ctx.sampleRate * dur));
+  const buf = ctx.createBuffer(1, bufSize, ctx.sampleRate);
+  const bd = buf.getChannelData(0);
+  for (let i = 0; i < bufSize; i++) {
+    const t = i / bufSize;
+    bd[i] = (Math.random() * 2 - 1) * Math.pow(1 - t, 1.8) * 0.35;
+  }
+  const breath = ctx.createBufferSource();
+  breath.buffer = buf;
+  const breathFilter = ctx.createBiquadFilter();
+  breathFilter.type = 'bandpass';
+  breathFilter.frequency.value = filterFreq;
+  breathFilter.Q.value = 1.8;
+  const breathGain = ctx.createGain();
+  breathGain.gain.setValueAtTime(0.001, startTime);
+  breathGain.gain.linearRampToValueAtTime(0.05 * intensity, startTime + 0.025);
+  breathGain.gain.exponentialRampToValueAtTime(0.001, startTime + dur);
+  breath.connect(breathFilter);
+  breathFilter.connect(breathGain);
+  breathGain.connect(ctx.destination);
+  breath.start(startTime);
+}
+
+/* ---------- 少年受击音效：软嫩脆版 · 啊/嗯 随机交替 ---------- */
+/**
+ * 特点：
+ *  - 随机发“啊”或“嗯”，每次受击都有新鲜感
+ *  - 高音区 560-700Hz，清亮软嫩
+ *  - 加入三倍频泛音，增加“脆”感
+ *  - 超快起音 + 高频破音 + 气声尾巴
+ * @param {number} intensity 强度 1=普通 1.3=重击
+ * @param {number} pitchShift 音高偏移
+ */
+function playHitVoice(intensity = 1, pitchShift = 0) {
+  const ctx = getAudioCtx();
+  if (!ctx) return;
+  const now = ctx.currentTime;
+
+  // 随机决定发“啊”还是“嗯”
+  const isAh = Math.random() < 0.5;
+
+  if (isAh) {
+    // ============ “啊”音（开口 · 清亮） ============
+    const baseFreq = (600 + Math.random() * 130) + pitchShift;
+    const endFreq  = (350 + Math.random() * 80) + pitchShift * 0.4;
+    const dur = 0.42 + Math.random() * 0.08;
+
+    // 主音源
+    const osc1 = ctx.createOscillator();
+    osc1.type = 'sine';
+    osc1.frequency.setValueAtTime(baseFreq, now);
+    osc1.frequency.exponentialRampToValueAtTime(endFreq, now + dur);
+
+    // 副音源（三角波加亮）
+    const osc2 = ctx.createOscillator();
+    osc2.type = 'triangle';
+    osc2.frequency.setValueAtTime(baseFreq * 1.008, now);
+    osc2.frequency.exponentialRampToValueAtTime(endFreq * 1.008, now + dur);
+    const osc2Gain = ctx.createGain();
+    osc2Gain.gain.value = 0.5;
+
+    // 高八度泛音
+    const osc3 = ctx.createOscillator();
+    osc3.type = 'sine';
+    osc3.frequency.setValueAtTime(baseFreq * 2, now);
+    osc3.frequency.exponentialRampToValueAtTime(endFreq * 2, now + dur);
+    const osc3Gain = ctx.createGain();
+    osc3Gain.gain.value = 0.28;
+
+    // 三倍频泛音（加“脆”）
+    const osc4 = ctx.createOscillator();
+    osc4.type = 'sine';
+    osc4.frequency.setValueAtTime(baseFreq * 3, now);
+    osc4.frequency.exponentialRampToValueAtTime(endFreq * 3, now + dur);
+    const osc4Gain = ctx.createGain();
+    osc4Gain.gain.value = 0.1;
+
+    // 颤音
+    const lfo = ctx.createOscillator();
+    lfo.frequency.value = 15 + Math.random() * 5;
+    const lfoGain = ctx.createGain();
+    lfoGain.gain.value = 14;
+    lfo.connect(lfoGain);
+    lfoGain.connect(osc1.frequency);
+    lfoGain.connect(osc2.frequency);
+
+    // “啊”的共振峰
+    const formants = [
+      { freq: 850, q: 4.5, gain: 0.9 },
+      { freq: 2100, q: 3.5, gain: 0.9 },
+      { freq: 3700, q: 3, gain: 0.55 }
+    ];
+    const formantFilters = formants.map(f => {
+      const filter = ctx.createBiquadFilter();
+      filter.type = 'bandpass';
+      filter.frequency.setValueAtTime(f.freq, now);
+      filter.frequency.exponentialRampToValueAtTime(f.freq * 0.78, now + dur);
+      filter.Q.value = f.q;
+      const g = ctx.createGain();
+      g.gain.value = f.gain;
+      filter.connect(g);
+      return { filter, gain: g };
+    });
+
+    [osc1, osc2].forEach(osc => {
+      formantFilters.forEach(f => osc.connect(f.filter));
+    });
+    osc3.connect(osc3Gain);
+    osc4.connect(osc4Gain);
+
+    // 音量包络（超快起音）
+    const vGain = ctx.createGain();
+    const peakAmp = 0.26 * intensity;
+    vGain.gain.setValueAtTime(0.0001, now);
+    vGain.gain.linearRampToValueAtTime(peakAmp, now + 0.012);
+    vGain.gain.setValueAtTime(peakAmp, now + 0.05);
+    vGain.gain.exponentialRampToValueAtTime(peakAmp * 0.45, now + 0.18);
+    vGain.gain.exponentialRampToValueAtTime(0.0001, now + dur);
+
+    const mix = ctx.createGain();
+    formantFilters.forEach(f => f.gain.connect(mix));
+    osc3Gain.connect(mix);
+    osc4Gain.connect(mix);
+    mix.connect(vGain);
+    vGain.connect(ctx.destination);
+
+    osc1.start(now);
+    osc2.start(now);
+    osc3.start(now);
+    osc4.start(now);
+    lfo.start(now);
+    osc1.stop(now + dur + 0.05);
+    osc2.stop(now + dur + 0.05);
+    osc3.stop(now + dur + 0.05);
+    osc4.stop(now + dur + 0.05);
+    lfo.stop(now + dur + 0.05);
+
+    playCrack(ctx, now, intensity, 0.02, 0.045);
+    playBreath(ctx, now + dur * 0.5, intensity, 0.16, 3400);
+
+  } else {
+    // ============ “嗯”音（闭口 · 鼻音 · 短促） ============
+    const baseFreq = (520 + Math.random() * 90) + pitchShift * 0.7;
+    const endFreq  = (310 + Math.random() * 55) + pitchShift * 0.3;
+    const dur = 0.34 + Math.random() * 0.08;
+
+    // 主音源（鼻音重）
+    const osc1 = ctx.createOscillator();
+    osc1.type = 'sine';
+    osc1.frequency.setValueAtTime(baseFreq, now);
+    osc1.frequency.exponentialRampToValueAtTime(endFreq, now + dur);
+
+    // 副音源
+    const osc2 = ctx.createOscillator();
+    osc2.type = 'triangle';
+    osc2.frequency.setValueAtTime(baseFreq * 1.01, now);
+    osc2.frequency.exponentialRampToValueAtTime(endFreq * 1.01, now + dur);
+    const osc2Gain = ctx.createGain();
+    osc2Gain.gain.value = 0.45;
+
+    // 高八度泛音
+    const osc3 = ctx.createOscillator();
+    osc3.type = 'sine';
+    osc3.frequency.setValueAtTime(baseFreq * 2, now);
+    osc3.frequency.exponentialRampToValueAtTime(endFreq * 2, now + dur);
+    const osc3Gain = ctx.createGain();
+    osc3Gain.gain.value = 0.15;
+
+    // 颤音（稍慢）
+    const lfo = ctx.createOscillator();
+    lfo.frequency.value = 13 + Math.random() * 4;
+    const lfoGain = ctx.createGain();
+    lfoGain.gain.value = 12;
+    lfo.connect(lfoGain);
+    lfoGain.connect(osc1.frequency);
+    lfoGain.connect(osc2.frequency);
+
+    // “嗯”的共振峰（闭口鼻音：F1/F2 都低）
+    const formants = [
+      { freq: 520, q: 5, gain: 1.0 },
+      { freq: 1150, q: 4.5, gain: 0.85 },
+      { freq: 2400, q: 3, gain: 0.35 }
+    ];
+    const formantFilters = formants.map(f => {
+      const filter = ctx.createBiquadFilter();
+      filter.type = 'bandpass';
+      filter.frequency.setValueAtTime(f.freq, now);
+      filter.frequency.exponentialRampToValueAtTime(f.freq * 0.8, now + dur);
+      filter.Q.value = f.q;
+      const g = ctx.createGain();
+      g.gain.value = f.gain;
+      filter.connect(g);
+      return { filter, gain: g };
+    });
+
+    [osc1, osc2].forEach(osc => {
+      formantFilters.forEach(f => osc.connect(f.filter));
+    });
+    osc3.connect(osc3Gain);
+
+    // 音量包络（“嗯”起音稍缓，因为是哼出来的）
+    const vGain = ctx.createGain();
+    const peakAmp = 0.24 * intensity;
+    vGain.gain.setValueAtTime(0.0001, now);
+    vGain.gain.linearRampToValueAtTime(peakAmp, now + 0.022);
+    vGain.gain.setValueAtTime(peakAmp, now + 0.08);
+    vGain.gain.exponentialRampToValueAtTime(0.0001, now + dur);
+
+    const mix = ctx.createGain();
+    formantFilters.forEach(f => f.gain.connect(mix));
+    osc3Gain.connect(mix);
+    mix.connect(vGain);
+    vGain.connect(ctx.destination);
+
+    osc1.start(now);
+    osc2.start(now);
+    osc3.start(now);
+    lfo.start(now);
+    osc1.stop(now + dur + 0.05);
+    osc2.stop(now + dur + 0.05);
+    osc3.stop(now + dur + 0.05);
+    lfo.stop(now + dur + 0.05);
+
+    playCrack(ctx, now, intensity, 0.02, 0.035);
+    playBreath(ctx, now + dur * 0.4, intensity, 0.12, 2200);
+  }
+}
+
+/* =========================================================
+   状态
+   ========================================================= */
+let currentRage = 0;
+let currentSceneIndex = 0;
+let currentDialogueIndex = 0;
+let sceneUnlocked = [true, false, false, false];
+let gamePhase = 'dialogue';
+let allClear = false;
+let overrideSprite = null;
+const lastFeedback = {};
+
+/* =========================================================
+   工具
+   ========================================================= */
+const $ = id => document.getElementById(id);
+
+function getSceneKey() { return SCENE_ORDER[currentSceneIndex]; }
+function getScene()    { return SCENES[getSceneKey()]; }
+
+function isNiangaoActive() {
+  return getSceneKey() === 'bathroom' && currentRage >= 80;
+}
+
+function showSceneToast(text, duration = 2200) {
+  const t = $('sceneToast');
+  t.textContent = text;
+  t.classList.add('show');
+  clearTimeout(t._timer);
+  t._timer = setTimeout(() => t.classList.remove('show'), duration);
+}
+
+function pickFeedback(action) {
+  const list = ACTION_FEEDBACK[action] || ['邵群：哼！'];
+  if (list.length === 1) return list[0];
+  let text, tries = 0;
+  do {
+    text = list[Math.floor(Math.random() * list.length)];
+    tries++;
+  } while (text === lastFeedback[action] && tries < 12);
+  lastFeedback[action] = text;
+  return text;
+}
+
+/* =========================================================
+   渲染
+   ========================================================= */
+function setDialogue(speaker, portraitKey, text) {
+  $('speakerName').textContent = speaker;
+  const src = PORTRAITS[portraitKey] || PORTRAITS.shaoqun;
+  $('portraitFrame').innerHTML = `<img src="${src}" alt="${speaker}">`;
+  $('dialogueText').textContent = text;
+}
+
+function updateRageDisplay() {
+  $('rageDisplay').textContent = currentRage;
+}
+
+function updateXiuxiuSprite() {
+  const el = $('xiuxiuSprite');
+  let key;
+
+  if (isNiangaoActive()) {
+    key = 'niangao';
+  } else if (overrideSprite) {
+    key = overrideSprite;
+  } else if (currentRage >= 50) {
+    key = 'wail';
+  } else if (currentRage >= 20) {
+    key = 'cry';
+  } else {
+    key = 'init';
+  }
+
+  el.src = XIUXIU_SPRITES[key];
+  $('niangaoBadge').style.display = isNiangaoActive() ? 'block' : 'none';
+
+  document.querySelectorAll('.sprite-btn').forEach(btn => {
+    btn.classList.toggle('active', !isNiangaoActive() && overrideSprite === btn.dataset.sprite);
+  });
+}
+
+function triggerHitEffect() {
+  const el = $('xiuxiuSprite');
+  el.classList.remove('hit-shake', 'hit-flash');
+  void el.offsetWidth;
+  el.classList.add('hit-shake', 'hit-flash');
+  setTimeout(() => el.classList.remove('hit-shake', 'hit-flash'), 340);
+}
+
+function updateActionButtons() {
+  const map = {
+    punch:  $('btnPunch'),
+    slap:   $('btnSlap'),
+    kick:   $('btnKick'),
+    hammer: $('btnHammer')
+  };
+  const sceneAction = getScene().action;
+
+  Object.entries(map).forEach(([action, btn]) => {
+    let enabled;
+    if (allClear) {
+      enabled = (action !== 'hammer') || isNiangaoActive();
+    } else {
+      enabled = (action === sceneAction) && gamePhase === 'action';
+    }
+    btn.classList.toggle('unlocked', enabled);
+  });
+}
+
+function updateSceneBackground() {
+  $('bgImage').src = getScene().bg;
+}
+
+function updateNextSceneButton() {
+  const btn = $('nextSceneBtn');
+  if (!allClear && currentSceneIndex < SCENE_ORDER.length - 1 && sceneUnlocked[currentSceneIndex + 1]) {
+    btn.classList.add('show');
+  } else {
+    btn.classList.remove('show');
+  }
+}
+
+function updateSceneSelectorUI() {
+  document.querySelectorAll('.scene-option-btn').forEach((btn, idx) => {
+    const unlocked = sceneUnlocked[idx];
+    btn.disabled = !unlocked;
+    btn.classList.toggle('unlocked', unlocked);
+    btn.classList.toggle('active-scene', idx === currentSceneIndex);
+    const s = SCENES[SCENE_ORDER[idx]];
+    btn.textContent = unlocked ? `${s.icon} ${s.name}` : `🔒 ${s.name}`;
+  });
+}
+
+/* =========================================================
+   飞行动画 + 击中特效
+   ========================================================= */
+function flyAttackIcon(action) {
+  const btn = document.querySelector(`[data-action="${action}"]`);
+  if (!btn) return;
+  const img = btn.querySelector('img');
+  if (!img) return;
+
+  const srcRect = img.getBoundingClientRect();
+  const target = $('xiuxiuSprite');
+  const tRect = target.getBoundingClientRect();
+
+  const paramsMap = {
+    punch:  { tx: 0.50, ty: 0.36, rot: 22,  scale: 1.7  },
+    slap:   { tx: 0.62, ty: 0.22, rot: -48, scale: 1.85 },
+    kick:   { tx: 0.50, ty: 0.64, rot: 30,  scale: 1.7  },
+    hammer: { tx: 0.50, ty: 0.10, rot: 55,  scale: 1.85 }
+  };
+  const p = paramsMap[action] || paramsMap.punch;
+
+  const targetX = tRect.left + tRect.width * p.tx;
+  const targetY = tRect.top + tRect.height * p.ty;
+
+  const clone = document.createElement('img');
+  clone.src = img.src;
+  clone.className = 'fly-attack';
+  clone.style.width = srcRect.width + 'px';
+  clone.style.height = srcRect.height + 'px';
+  clone.style.left = (srcRect.left + srcRect.width / 2) + 'px';
+  clone.style.top  = (srcRect.top + srcRect.height / 2) + 'px';
+  clone.style.transform = 'translate(-50%, -50%) scale(1) rotate(0deg)';
+  document.body.appendChild(clone);
+
+  requestAnimationFrame(() => {
+    clone.style.transition = 'left .30s cubic-bezier(.5,0,.75,.4), top .30s cubic-bezier(.5,0,.75,.4), transform .30s cubic-bezier(.4,0,.6,1)';
+    clone.style.left = targetX + 'px';
+    clone.style.top  = targetY + 'px';
+    clone.style.transform = `translate(-50%, -50%) scale(${p.scale}) rotate(${p.rot}deg)`;
+  });
+
+  setTimeout(() => {
+    clone.style.transition = 'transform .18s ease-out, opacity .18s ease-out';
+    clone.style.transform = `translate(-50%, -50%) scale(${p.scale * 1.4}) rotate(${p.rot + 20}deg)`;
+    clone.style.opacity = '0';
+    setTimeout(() => clone.remove(), 220);
+
+    createImpactEffect(targetX, targetY, action);
+    triggerHitEffect();
+  }, 300);
+}
+
+function createImpactEffect(x, y, action) {
+  const icon = document.createElement('div');
+  icon.className = 'impact-effect';
+  const symbolMap = { punch: '💥', slap: '💢', kick: '💥', hammer: '💫' };
+  icon.textContent = symbolMap[action] || '💥';
+  icon.style.left = x + 'px';
+  icon.style.top = y + 'px';
+  icon.style.transform = 'translate(-50%, -50%) scale(0) rotate(-30deg)';
+  document.body.appendChild(icon);
+
+  requestAnimationFrame(() => {
+    icon.style.transition = 'transform .28s cubic-bezier(.2,1.4,.5,1), opacity .28s ease-out';
+    icon.style.transform = 'translate(-50%, -50%) scale(1.45) rotate(10deg)';
+    icon.style.opacity = '1';
+  });
+  setTimeout(() => {
+    icon.style.transition = 'transform .3s ease-in, opacity .3s ease-in';
+    icon.style.transform = 'translate(-50%, -50%) scale(1.8) rotate(20deg)';
+    icon.style.opacity = '0';
+  }, 240);
+  setTimeout(() => icon.remove(), 620);
+
+  const ring = document.createElement('div');
+  ring.className = 'impact-ring';
+  ring.style.left = x + 'px';
+  ring.style.top = y + 'px';
+  ring.style.transform = 'scale(.2)';
+  ring.style.opacity = '1';
+  document.body.appendChild(ring);
+
+  requestAnimationFrame(() => {
+    ring.style.transition = 'transform .38s ease-out, opacity .38s ease-out';
+    ring.style.transform = 'scale(2.2)';
+    ring.style.opacity = '0';
+  });
+  setTimeout(() => ring.remove(), 420);
+}
+
+/* =========================================================
+   流程控制
+   ========================================================= */
+function switchScene(index) {
+  if (index < 0 || index >= SCENE_ORDER.length) return;
+  if (!sceneUnlocked[index]) return;
+
+  currentSceneIndex = index;
+  currentDialogueIndex = 0;
+  gamePhase = 'dialogue';
+  overrideSprite = null;
+  $('spritePanel').classList.remove('expanded');
+
+  updateSceneBackground();
+  updateSceneSelectorUI();
+  updateXiuxiuSprite();
+
+  const first = getScene().dialogues[0];
+  setDialogue(first.speaker, first.portrait, first.text);
+
+  $('continueHint').style.display = 'block';
+  updateActionButtons();
+  updateNextSceneButton();
+}
+
+function advanceDialogue() {
+  if (gamePhase !== 'dialogue') return;
+
+  const dialogues = getScene().dialogues;
+
+  if (currentDialogueIndex < dialogues.length - 1) {
+    currentDialogueIndex++;
+    const d = dialogues[currentDialogueIndex];
+    setDialogue(d.speaker, d.portrait, d.text);
+  } else {
+    gamePhase = 'action';
+    $('continueHint').style.display = 'none';
+    setDialogue(
+      '系统',
+      'system',
+      `剧情结束！用【${getScene().actionLabel}】教训秀秀，攒怒气吧！（当前场景：${getScene().name}）`
+    );
+    updateActionButtons();
+  }
+}
+
+function handleAction(action) {
+  if (gamePhase !== 'action') return;
+
+  const scene = getScene();
+  if (!allClear && action !== scene.action) return;
+
+  if (action === 'hammer' && !isNiangaoActive()) {
+    setDialogue('邵群', 'shaoqun', '邵群：锤？李程秀现在还硬邦邦的呢，得先把他捶软了才行！');
+    return;
+  }
+
+  const gainMap = { punch: 6, slap: 7, kick: 8, hammer: 10 };
+
+  currentRage += gainMap[action] || 6;
+  updateRageDisplay();
+
+  flyAttackIcon(action);
+
+  setTimeout(() => {
+    playImpactSound(action);
+    // 少年受击音效：软嫩脆版 · 啊/嗯 随机交替
+    const intensity = action === 'hammer' ? 1.3 : action === 'kick' ? 1.12 : 1.0;
+    const pitchShift = action === 'slap' ? 40 : action === 'hammer' ? -15 : 0;
+    setTimeout(() => {
+      playHitVoice(intensity, pitchShift);
+    }, 35);
+  }, 300);
+
+  setDialogue('邵群', 'shaoqun', pickFeedback(action));
+
+  setTimeout(() => {
+    updateXiuxiuSprite();
+    updateActionButtons();
+    checkProgress();
+  }, 320);
+}
+
+function checkProgress() {
+  const scene = getScene();
+  const nextIndex = currentSceneIndex + 1;
+
+  if (nextIndex < SCENE_ORDER.length
+      && !sceneUnlocked[nextIndex]
+      && currentRage >= scene.rageGoal) {
+    sceneUnlocked[nextIndex] = true;
+    showSceneToast(`🔓 新场景解锁：${SCENES[SCENE_ORDER[nextIndex]].name}！`);
+    updateSceneSelectorUI();
+    updateNextSceneButton();
+  }
+
+  if (!allClear
+      && currentSceneIndex === SCENE_ORDER.length - 1
+      && currentRage >= scene.rageGoal) {
+    allClear = true;
+    showSceneToast('🎉 全剧情通关！场景切换已解锁！', 2600);
+    $('allClearToast').classList.add('show');
+    setTimeout(() => $('allClearToast').classList.remove('show'), 3200);
+
+    $('scenePanel').classList.add('show');
+    $('spritePanel').classList.add('show');
+
+    updateSceneSelectorUI();
+    updateActionButtons();
+    updateNextSceneButton();
+
+    overrideSprite = null;
+    document.querySelectorAll('.sprite-btn').forEach(b => b.classList.remove('active'));
+    updateXiuxiuSprite();
+  }
+}
+
+/* =========================================================
+   预加载 & 初始化
+   ========================================================= */
+function preloadAssets() {
+  const urls = new Set();
+  Object.values(SCENES).forEach(s => urls.add(s.bg));
+  Object.values(XIUXIU_SPRITES).forEach(u => urls.add(u));
+  Object.values(PORTRAITS).forEach(u => urls.add(u));
+  urls.forEach(u => { const img = new Image(); img.src = u; });
+}
+
+function initGame() {
+  preloadAssets();
+
+  currentRage = 0;
+  currentSceneIndex = 0;
+  currentDialogueIndex = 0;
+  sceneUnlocked = [true, false, false, false];
+  gamePhase = 'dialogue';
+  allClear = false;
+  overrideSprite = null;
+
+  updateRageDisplay();
+  updateXiuxiuSprite();
+  updateSceneBackground();
+  updateSceneSelectorUI();
+  updateActionButtons();
+  updateNextSceneButton();
+
+  $('scenePanel').classList.remove('show', 'expanded');
+  $('spritePanel').classList.remove('show', 'expanded');
+  $('nextSceneBtn').classList.remove('show');
+
+  const first = SCENES.living.dialogues[0];
+  setDialogue(first.speaker, first.portrait, first.text);
+  $('continueHint').style.display = 'block';
+
+  $('dialogueBox').addEventListener('click', e => {
+    e.stopPropagation();
+    getAudioCtx();
+    advanceDialogue();
+  });
+
+  ['punch', 'slap', 'kick', 'hammer'].forEach(action => {
+    const btn = document.querySelector(`[data-action="${action}"]`);
+    btn.addEventListener('click', e => {
+      e.stopPropagation();
+      getAudioCtx();
+      handleAction(action);
+    });
+  });
+  $('actionBar').addEventListener('click', e => e.stopPropagation());
+
+  $('nextSceneBtn').addEventListener('click', e => {
+    e.stopPropagation();
+    if (allClear) return;
+    const next = currentSceneIndex + 1;
+    if (next < SCENE_ORDER.length && sceneUnlocked[next]) {
+      switchScene(next);
+    }
+  });
+
+  $('scenePanelToggle').addEventListener('click', e => {
+    e.stopPropagation();
+    if (!allClear) return;
+    $('scenePanel').classList.toggle('expanded');
+    $('spritePanel').classList.remove('expanded');
+  });
+
+  document.querySelectorAll('.scene-option-btn').forEach(btn => {
+    btn.addEventListener('click', e => {
+      e.stopPropagation();
+      const idx = parseInt(btn.dataset.scene, 10);
+      if (!allClear) return;
+      if (sceneUnlocked[idx]) {
+        switchScene(idx);
+        $('scenePanel').classList.remove('expanded');
+      }
+    });
+  });
+
+  $('spritePanelToggle').addEventListener('click', e => {
+    e.stopPropagation();
+    if (!allClear) return;
+    $('spritePanel').classList.toggle('expanded');
+    $('scenePanel').classList.remove('expanded');
+  });
+
+  document.querySelectorAll('.sprite-btn').forEach(btn => {
+    btn.addEventListener('click', e => {
+      e.stopPropagation();
+      if (!allClear) return;
+      overrideSprite = btn.dataset.sprite;
+      updateXiuxiuSprite();
+    });
+  });
+
+  document.addEventListener('click', e => {
+    if (!e.target.closest('#scenePanel')) {
+      $('scenePanel').classList.remove('expanded');
+    }
+    if (!e.target.closest('#spritePanel')) {
+      $('spritePanel').classList.remove('expanded');
+    }
+  });
+}
+
+window.addEventListener('load', initGame);
+</script>
+</body>
+</html>
